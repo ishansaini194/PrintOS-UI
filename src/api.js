@@ -12,14 +12,32 @@ export async function uploadJob({ file, shopId, type, copies }) {
   return res.json();
 }
 
-// 2. Confirm payment (STUB backend) → marks paid, job held at shop
-export async function confirmPayment(jobId) {
-  const res = await fetch(`${BASE}/pay/confirm`, {
+// 2a. Create the Razorpay order for a job
+//     → { razorpay_order_id, amount_paise, key_id }
+export async function orderPayment(jobId) {
+  const res = await fetch(`${BASE}/pay/order`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ job_id: jobId }),
   });
-  if (!res.ok) throw new Error(`pay/confirm failed: ${res.status}`);
+  if (!res.ok) throw new Error(`pay/order failed: ${res.status}`);
+  return res.json();
+}
+
+// 2b. Send the checkout result to the cloud, which verifies the signature
+//     with its secret — only then is the job paid and held at the shop.
+export async function verifyPayment({ jobId, razorpayPaymentId, razorpayOrderId, razorpaySignature }) {
+  const res = await fetch(`${BASE}/pay/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      job_id: jobId,
+      razorpay_payment_id: razorpayPaymentId,
+      razorpay_order_id: razorpayOrderId,
+      razorpay_signature: razorpaySignature,
+    }),
+  });
+  if (!res.ok) throw new Error(`pay/verify failed: ${res.status}`);
   return res.json();
 }
 
